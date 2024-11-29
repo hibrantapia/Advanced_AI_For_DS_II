@@ -1,4 +1,4 @@
-# Advanced Artificial Intelligence for Data Science
+# Advanced Artificial Intelligence for Data Science - Part II
 
 This repository contains the materials and projects for my concentration in AI. Here, you will find a collection of resources, code, and documentation related to advanced AI techniques, including machine learning, deep learning, and their applications in data science.
 
