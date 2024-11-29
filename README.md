@@ -14,7 +14,18 @@ Feel free to explore, contribute, or use these materials for educational and res
     - **`4 - Base de Datos/`**
     - **`5 - Diagrama Relacional/`**
     - **`6 - Instalación MySQL/`**
-
+      
+  - **`Módulo 4 - Cómputo en la Nube/`**
+    - Diseño de Arquitectura en la Nube.pdf
+    - POR LLENAR
+      
+  - **`Módulo 5 - Estadística Avanzada/`**
+    - **`POR LLENAR/`**
+    - **`A2 - Regresión Múltiple/`**
+    - **`A3 - Regresión Múltiple - Detección Datos Atípicos/`**
+    - **`POR LLENAR/`**
+    - **`Actividad Integradora 1/`**
+  
 
 - **`Portafolio de Implementación/`**
   - **`Módulo 5 - Estadística Avanzada/`**
