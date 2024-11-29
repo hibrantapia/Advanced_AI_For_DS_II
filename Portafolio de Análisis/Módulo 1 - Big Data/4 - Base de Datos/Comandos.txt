@@ -1,0 +1,4 @@
+brew services start mysql    
+IR A LA CARPETA DONDE ESTA PHPMYADMIN
+php -S localhost:8080   
+brew services stop mysql
