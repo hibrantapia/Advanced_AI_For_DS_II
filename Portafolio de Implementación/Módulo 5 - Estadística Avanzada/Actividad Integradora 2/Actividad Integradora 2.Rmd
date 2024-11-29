@@ -1,0 +1,455 @@
+---
+title: "Actividad Integradora 2"
+author: "Héctor Hibran Tapia Fernández - A01661114"
+date: "2024-11-19"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Titanic
+
+Base de datos del Titanic: Titanic.csv
+Base de datos de prueba: Titanic_test.csv 
+
+Las variables para la base de datos son las siguientes:
+
+*Name:* Nombre del pasajero
+*PassengerId:* Ids del pasajero
+*Survived:* Si sobrevivió o no (No = 0, Sí = 1)  
+*Ticket:* Número de ticket  
+*Cabin:* Cabina en la que viajó  
+*Pclass:* Clase en la que viajó (1 = 1era, 2 = 2da, 3 = 3ra)  
+*Sex:* Masculino o Femenino (male/female)  
+*Age:* Edad  
+*SibSp:* Número de hermanos/conyuge a bordo  
+*Parch:* Número de padres/hijos a bordo  
+*Fare:* Tarifa que pagó  
+*Embarked:* Puerto de embarcación (C = Cherbourg, Q = Queenstown, S = Southampton) 
+
+# 1. Prepara la base de datos Titanic:
+
+```{r}
+M = read.csv("Titanic.csv")
+str(M)
+```
+
+## Ajustando las variables
+
+*Variables de interés*: Quitamos aquellas variables que de entrada no tengan que ver con la sobrevivencia del pasajero.
+Variables 4, 9 y 11.
+
+```{r}
+M1 <- M[,c(-4,-9,-11)]
+```
+
+Ahora, las variables categóricas deben aparecer como factores: Survived, Pclass, Sex y Embarked
+
+```{r}
+for(var in c('Survived','Pclass','Embarked','Sex')) 
+  M1[,var] <-as.factor(M1[,var])
+```
+
+```{r}
+#M
+```
+## Análisis de datos faltantes
+
+Detectamos si hay espacios vacíos en lugar de datos:
+
+```{r}
+V = matrix(NA,ncol=1,nrow=9)
+for(i in c(1:9)){
+  V[i,] <- sum(with(M1,M1[,i])=="")}
+V
+```
+
+Ninguna variable tiene espacios vacíos, pero las variables 5 (Age), 8 (Fare) y 9 (Embarked) tienen datos faltantes.
+
+Vamos a contar los datos faltantes:
+
+```{r}
+N = apply(X=is.na(M1),MARGIN = 2,FUN = sum)
+P = round(100*N/length(M1[,2]),2)
+NP = data.frame(as.numeric(N),as.numeric(P))
+row.names(NP)= c("PassengerId", "Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked")
+names(NP)=c("Número","Porcentaje")
+t(NP)
+```
+
+En edad hay muchos datos faltantes, el 20% de los datos.
+
+## Realiza un análisis descriptivo
+
+Observemos el patrón de los datos faltantes:
+
+```{r}
+# install.packages("mice", type = "binary")
+library("mice")
+
+md.pattern(M1)
+```
+
+Todos los datos faltantes son de distintos pasajeros (observaciones), por lo tanto, si se eliminan los NA, se eliminarían 266 observaciones y nos quedaríamos con 1043 observaciones.
+
+```{r}
+#install.packages("naniar")
+library(naniar)
+vis_miss(M1,sort_miss = TRUE)
+```
+
+## Análisis sobre datos faltantes
+
+*Medidas con datos faltantes*
+
+```{r}
+summary(M1[,-1])
+```
+
+*Medidas sin datos faltantes*
+
+```{r}
+M2 = na.omit(M1)
+summary(M2[,-1])
+```
+
+**Sobrevivientes**
+
+```{r}
+t2c = 100*prop.table(table(M1[,2]))
+t2s = 100*prop.table(table(M2[,2]))
+t2p = c(t2s[1]/t2c[1],t2s[2]/t2c[2])
+t2 = data.frame(as.numeric(t2c),as.numeric(t2s),as.numeric(t2p))
+row.names(t2) = c("Murió","Sobrevivió")
+names(t2) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t2,2)
+```
+
+**Clase en que viajó**
+
+```{r}
+t3c = 100*prop.table(table(M1[,3]))
+t3s = 100*prop.table(table(M2[,3]))
+t3p = c(t3s[1]/t3c[1],t3s[2]/t3c[2],t3s[3]/t3c[3])
+t3 = data.frame(as.numeric(t3c),as.numeric(t3s),as.numeric(t3p))
+row.names(t3) = c("Primera","Segunda","Tercera")
+names(t3) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t3,2)
+```
+
+**Sexo**
+
+```{r}
+t4c = 100*prop.table(table(M1[,4]))
+t4s = 100*prop.table(table(M2[,4]))
+t4p = c(t4s[1]/t4c[1],t4s[2]/t4c[2])
+t4 = data.frame(as.numeric(t4c),as.numeric(t4s),as.numeric(t4p))
+row.names(t4) = c("Mujer","Hombre")
+names(t4) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t4,2)
+```
+
+*Puerto de embarcación*
+
+```{r}
+t9c = 100*prop.table(table(M1[,9]))
+t9s = 100*prop.table(table(M2[,9]))
+t9p = c(t9s[1]/t9c[1],t9s[2]/t9c[2],t9s[3]/t9c[3])
+t9 = data.frame(as.numeric(t9c),as.numeric(t9s),as.numeric(t9p))
+row.names(t9) = c("Cherbourg","Queenstown","Southampton")
+names(t9) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t9,2)
+```
+
+```{r}
+table(M1$Survived) / nrow(M1) # Proporción de sobrevivientes
+table(M1$Pclass) / nrow(M1)   # Proporción por clase
+table(M1$Sex) / nrow(M1)      # Proporción por sexo
+table(M1$Embarked) / nrow(M1) # Proporción por puerto de embarque
+```
+
+
+## Haz una partición de los datos (70-30) para el entrenamiento y la validación. Revisa la proporción de sobrevivientes para la partición y la base original.
+
+```{r}
+set.seed(092784)
+train_indices = sample(1:nrow(M1), size = 0.7 * nrow(M1))
+
+train_data = M1[train_indices, ]
+test_data = M1[-train_indices, ]
+
+original_survived = table(M1$Survived) / nrow(M1)
+train_survived = table(train_data$Survived) / nrow(train_data)
+test_survived = table(test_data$Survived) / nrow(test_data)
+```
+
+
+```{r}
+train_data = na.omit(train_data)
+```
+
+# 2. Con la base de datos de entrenamiento, encuentra un modelo logístico para encontrar el mejor conjunto de predictores que auxilien a clasificar la dirección de cada observación.
+
+```{r}
+full_model = glm(Survived ~ ., data = train_data, family = binomial) # Modelo con todas las variables
+summary(full_model)
+```
+
+## Auxiliate del criterio de AIC para determinar cuál es el mejor modelo.
+
+```{r}
+best_model = step(full_model, direction = "both") # Modelo usando Stepwise (Backward y Forward)
+summary(best_model)
+```
+
+## Propón por lo menos los dos que consideres mejores modelos.
+
+```{r}
+model1 = best_model
+
+model2 = glm(Survived ~ Pclass + Sex + Age + SibSp, data = train_data, family = binomial)  # Modelo con predictores clave
+
+cat("\nAIC de los modelos:\n")
+cat("Modelo 1:", AIC(model1), "\n")
+cat("Modelo 2:", AIC(model2), "\n")
+```
+
+# 3. Analiza los modelos a través de: 
+
+## Identificación de la Desviación residual y Nula de cada modelo
+
+```{r}
+null_deviance = full_model$null.deviance
+residual_deviance = best_model$deviance
+
+cat("Desviación nula:", null_deviance, "\n")
+cat("Desviación residual:", residual_deviance, "\n")
+```
+
+## Cálculo de la Desviación Explicada
+
+```{r}
+deviance_explained = (null_deviance - residual_deviance) / null_deviance
+cat("Proporción de desviación explicada:", round(deviance_explained * 100, 2), "%\n")
+```
+
+## Prueba de la razón de verosimilitud
+
+```{r}
+lr_test = null_deviance - residual_deviance
+df_diff = full_model$df.null - best_model$df.residual
+p_value_lr = pchisq(lr_test, df = df_diff, lower.tail = FALSE)
+
+cat("Prueba de la razón de verosimilitud:\n")
+cat("  Chi-cuadrado:", lr_test, "\n")
+cat("  Grados de libertad:", df_diff, "\n")
+cat("  Valor-p:", p_value_lr, "\n")
+```
+
+## Define cuál es el mejor modelo
+
+```{r}
+if(!require(ggplot2)) install.packages("ggplot2")
+library(ggplot2)
+
+valores_age = data.frame(
+  Pclass = factor(rep(1:3, each = 100)), 
+  Sex = factor(rep("male", 300)),        
+  Age = seq(min(train_data$Age, na.rm = TRUE), max(train_data$Age, na.rm = TRUE), length.out = 100),
+  SibSp = 0                           
+)
+
+predicciones = predict(best_model, newdata = valores_age, type = "link", se.fit = TRUE)
+
+valores_age$probabilidad = plogis(predicciones$fit)
+valores_age$CI.superior = plogis(predicciones$fit + 1.96 * predicciones$se.fit)
+valores_age$CI.inferior = plogis(predicciones$fit - 1.96 * predicciones$se.fit)
+
+ggplot(valores_age, aes(x = Age, y = probabilidad, color = Pclass)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = CI.inferior, ymax = CI.superior, fill = Pclass), alpha = 0.2) +
+  labs(title = "Probabilidad de Supervivencia según Edad y Clase",
+       x = "Edad",
+       y = "P(Survived | Age, Pclass)") +
+  scale_color_manual(values = c("blue", "red", "green"), name = "Clase") +
+  scale_fill_manual(values = c("blue", "red", "green"), name = "Clase") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Escribe su ecuación, analiza sus coeficientes y detecta el efecto  de cada predictor en la clasificación.
+
+```{r}
+cat("\nEcuación del modelo:\n")
+cat("logit(Survived) = 4.86 - 1.72*Pclass2 - 2.72*Pclass3 - 3.59*Sexmale - 0.04*Age - 0.30*SibSp\n")
+```
+
+# 4. Analiza las predicciones para los datos de entrenamiento
+
+## Elabora la matriz de confusión
+
+```{r}
+train_predictions = predict(best_model, newdata = train_data, type = "response")
+train_data$Predicted = ifelse(train_predictions > 0.5, 1, 0) # Clasificamos como '1' (sobrevive) o '0' (no sobrevive) usando un umbral de 0.5
+
+confusion_matrix = table(Predicted = train_data$Predicted, Actual = train_data$Survived)
+accuracy = sum(diag(confusion_matrix)) / sum(confusion_matrix) 
+
+cat("Matriz de Confusión:\n")
+print(confusion_matrix)
+cat("\nPrecisión:", round(accuracy, 2))
+```
+
+## Elabora la Curva ROC 
+
+```{r}
+library(pROC)
+
+roc_curve = roc(train_data$Survived, train_predictions)
+plot(roc_curve, col = "blue", main = "Curva ROC - Entrenamiento")
+abline(a = 0, b = 1, lty = 2, col = "red")
+```
+
+```{r}
+cat("\nÁrea bajo la curva (AUC):", round(auc(roc_curve), 3), "\n")
+```
+
+
+## Elabora el gráfico de violín
+
+```{r}
+library(ggplot2)
+
+ggplot(train_data, aes(x = as.factor(Survived), y = train_predictions, fill = as.factor(Survived))) +
+  geom_violin(trim = FALSE) +
+  geom_boxplot(width = 0.2, position = position_dodge(0.9), outlier.shape = NA) +
+  labs(title = "Distribución de Probabilidades por Clase Real",
+       x = "Supervivencia (0 = No Sobrevive, 1 = Sí Sobrevive)",
+       y = "Probabilidad Predicha",
+       fill = "Supervivencia") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+#  5. Validación del modelo con la base de datos de validación
+
+## Elije un umbral de clasificación óptimo
+
+```{r}
+test_data_clean = na.omit(test_data)
+validation_predictions_clean = predict(best_model, newdata = test_data_clean, type = "response")
+validation_roc = roc(test_data_clean$Survived, validation_predictions_clean)
+optimal_coords = coords(validation_roc, "all", ret = c("threshold", "sensitivity", "specificity"), transpose = FALSE)
+```
+
+```{r}
+optimal_threshold = coords(validation_roc, "best", ret = "threshold", transpose = FALSE)
+# cat("Umbral ajustado:", adjusted_threshold, "\n")
+adjusted_threshold = 0.33
+
+test_data_clean$Predicted = ifelse(validation_predictions_clean > adjusted_threshold, 1, 0)
+confusion_matrix_validation = table(Predicted = test_data_clean$Predicted, Actual = test_data_clean$Survived)
+accuracy_validation = sum(diag(confusion_matrix_validation)) / sum(confusion_matrix_validation)
+```
+
+
+## Elabora la matriz de confusión con el umbral de clasificación óptimo
+
+```{r}
+cat("\nMatriz de Confusión (Validación):\n")
+print(confusion_matrix_validation)
+cat("\nPrecisión (Validación):", round(accuracy_validation, 2))
+```
+
+```{r}
+plot(validation_roc, col = "blue", main = "Curva ROC - Validación")
+abline(a = 0, b = 1, lty = 2, col = "red")
+```
+
+```{r}
+cat("\nÁrea bajo la curva (AUC):", round(auc(validation_roc), 3), "\n")
+```
+
+
+# 6. Elabora el testeo con la base de datos de prueba.
+
+```{r}
+test_data_final = read.csv("Titanic_test.csv")
+
+cat("Estructura inicial de los datos de prueba:\n")
+str(test_data_final)
+```
+
+```{r}
+test_data_final$Pclass = as.factor(test_data_final$Pclass)
+test_data_final$Sex = as.factor(test_data_final$Sex)
+test_data_final$Embarked = as.factor(test_data_final$Embarked)
+test_data_final_clean = na.omit(test_data_final)
+```
+
+```{r}
+final_predictions = predict(best_model, newdata = test_data_final_clean, type = "response")
+cat("Número de predicciones generadas:", length(final_predictions), "\n")
+
+adjusted_threshold = 0.3 
+test_data_final_clean$Predicted = ifelse(final_predictions > adjusted_threshold, 1, 0)
+
+#output = data.frame(PassengerId = test_data_final_clean$PassengerId, Predicted = test_data_final_clean$Predicted)
+#write.csv(output, "Titanic_test_predictions.csv", row.names = FALSE)
+```
+
+
+# 7. Concluye en el contexto del problema:
+
+## Define las principales características que influyen en el modelo seleccionado e interpretalas: ¿qué características tuvieron las personas que sobrevivieron?
+
+Después de todo este show, lo que hace el análisis de nuestro modelo logístico nos ayuda a identificar las principales características que influyen en la probabilidad de supervivencia de una persona en el Titanic. 
+
+Variables:
+
+*(Pclass):* La clase socioeconómica tuvo un impacto significativo en la supervivencia, Los pasajeros de primera clase tuvieron una mayor probabilidad de sobrevivir vs los de tercera clase que tuvieron la probabilidad más baja.
+
+*(Sex):* Ser mujer aumenta significativamente la probabilidad de supervivencia ya que los hombres tienen una probabilidad mucho más baja de sobrevivir.
+
+*Edad (Age):* La edad también tiene efecto en la probabilidad de supervivencia.
+
+### Entonces podemos describir a las personas que sobrevivieron, de acuerdo con el modelo:
+
+Clase Alta,  Mujeres y Niños.
+
+## Interpreta los coeficientes del modelo
+
+```{r}
+summary(best_model)
+```
+*Intercepto:* Su valor positivo indica que la probabilidad de supervivencia en esta categoría es alta.
+*Pclass2 y Pclass3:*: Coeficiente negativo significa que estar en segunda clase reduce la probabilidad de supervivencia en comparación con la primera clase. Lo mismo para la tercera clase.
+*Sexmale:* Coeficiente negativo indica que los hombres tienen una probabilidad mucho más baja de sobrevivir en comparación con las mujeres.
+*Age:* Coeficiente negativo indica que, por cada aumento en un año de edad, la probabilidad de supervivencia disminuye ligeramente.
+
+Se obtiene que: *Positivo o de Mayor probabilidad: Ser mujer, de primera clase y menor edad.*
+
+Que concuerda con lo anterior.
+
+## Define cuál es el mejor umbral de clasificación y por qué
+
+```{r}
+roc_curve = roc(train_data$Survived, predict(best_model, newdata = train_data, type = "response"))
+optimal_threshold = coords(roc_curve, "best", ret = "threshold", transpose = FALSE)
+print(round(optimal_threshold, 3))
+optimal_metrics = coords(roc_curve, "best", ret = c("sensitivity", "specificity"), transpose = FALSE)
+```
+
+El umbral óptimo identificado es 0.366, nos indica que la si probabilidad predicha por el modelo es mayor o igual a 0.366, clasificamos la observación como 1 (sobrevive), si es menor, se clasifica como 0 (no sobrevive). Lo que maximiza el balance entre sensibilidad (detecta correctamente a los sobrevivientes) y especificidad (detecta correctamente a los no sobrevivientes) en los datos de entrenamiento o validación.
+
+
+
+
+
+
+
+

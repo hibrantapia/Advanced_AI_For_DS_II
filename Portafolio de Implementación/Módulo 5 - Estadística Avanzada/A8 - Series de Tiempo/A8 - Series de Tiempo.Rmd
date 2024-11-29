@@ -1,0 +1,202 @@
+---
+title: "A8 -Series de Tiempo"
+author: "Héctor Hibran Tapia Fernández - A01661114"
+date: "2024-11-14"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Para los datos de las ventas de televisores analiza la serie de tiempo más apropiada:
+
+```{r}
+año = rep(1:4, each = 4)
+trimestre = rep(1:4, times = 4)
+ventas = c(4.8, 4.1, 6.0, 6.5, 5.8, 5.2, 6.8, 7.4, 6.0, 5.6, 7.5, 7.8, 6.3, 5.9, 8.0, 8.4)
+data = data.frame(año, trimestre, ventas)
+```
+
+### Realiza el análisis de tendencia y estacionalidad:
+
+#### - Identifica si es una serie estacionaria
+
+Se puede observar una tendencia positiva lo que confirma el aumento en las ventas con el tiempo, no es estacionaria ya que no se mantiene dentro del mismo rango de valores, su media es dependiente del tiempo.
+
+```{r}
+ventas_ts = ts(data$ventas, start = c(1,1), frequency = 4)
+plot(ventas_ts, main = "Ventas de Televisores", xlab = "Tiempo (Años)", ylab = "Ventas (Miles)", type = "o")
+```
+
+#### - Grafica la serie para verificar su tendencia y estacionalidad
+
+```{r}
+decomp = decompose(ventas_ts, type = "multiplicative") # tambien se puede additive
+plot(decomp)
+```
+
+```{r}
+decomp = decompose(ventas_ts, type = "additive") 
+plot(decomp)
+```
+
+#### - Analiza su gráfico de autocorrelación
+
+```{r}
+acf(ventas_ts, main = "Autocorrelación de Ventas")
+```
+
+#### - Identifica si el modelo puede ser sumativo o multiplicativo (puedes probar con ambos para ver con cuál es mejor el modelo)
+
+Según Wikipedia...
+
+"Un modelo aditivo es una forma de representar una serie de tiempo en la que los distintos componentes (tendencia, estacionalidad y ruido) se suman para dar el valor observado en cada punto temporal."
+
+Teniendo eso en cuenta diría que el modelo aditivo es el más adecuado para los datos de ventas de los televisores porque la tendencia es lineal, la estacionalidad es constante y el ruido es pequeño. Esto permite representar la serie de tiempo sumando sin necesidad de un modelo más complejo como lo sería el multiplicativo.
+
+En resumen, esta serie de tiempo es no estacionaria, muestra tendencia creciente y estacionalidad trimestral, y un modelo aditivo es probable que capture bien su estructura.
+
+## 2. Calcula los índices estacionales y grafica la serie desestacionalizada.
+
+```{r}
+decompose_add = decompose(ventas_ts, type = "additive")
+indices_estacionales = decompose_add$seasonal
+print("Índices Estacionales:")
+print(indices_estacionales)
+```
+
+```{r}
+serie_desestacionalizada = ventas_ts - indices_estacionales
+plot(serie_desestacionalizada, main = "Serie Desestacionalizada de Ventas de Televisores", 
+     xlab = "Tiempo", ylab = "Ventas (miles)", col = "red")
+lines(serie_desestacionalizada, col = "red")
+```
+
+```{r}
+plot(ventas_ts, main = "Serie Original y Desestacionalizada de Ventas de Televisores", 
+     xlab = "Tiempo", ylab = "Ventas (miles)", col = "blue")
+lines(serie_desestacionalizada, col = "red")
+legend("topright", legend = c("Original", "Desestacionalizada"), col = c("blue", "red"), lty = 1)
+```
+
+## 3. Analiza el modelo lineal de la tendencia
+
+### - Realiza la regresión lineal de la tendencia (ventas desestacionalizadas vs tiempo)
+
+```{r}
+tiempo = 1:length(serie_desestacionalizada)
+modelo_lineal = lm(serie_desestacionalizada ~ tiempo)
+summary_modelo = summary(modelo_lineal)
+summary_modelo 
+```
+
+```{r}
+plot(tiempo, serie_desestacionalizada, main = "Regresión Lineal de la Tendencia en Ventas Desestacionalizadas",
+     xlab = "Tiempo", ylab = "Ventas desestacionalizadas (miles)", col = "red", pch = 16)
+
+abline(modelo_lineal, col = "blue", lwd = 2)
+legend("topleft", legend = c("Serie Desestacionalizada", "Tendencia Lineal"), col = c("red", "blue"), pch = c(16, NA), lty = c(NA, 1))
+```
+
+
+### - Analiza la significancia del modelo lineal, global e individual
+
+```{r}
+p_valor_global = summary_modelo$fstatistic[1]
+p_valor_global
+```
+
+```{r}
+p_valores_individuales = summary_modelo$coefficients[, 4]
+p_valores_individuales
+```
+
+
+### - Haz el análisis de residuos
+
+```{r}
+residuos = residuals(modelo_lineal)
+plot(tiempo, residuos, main = "Gráfico de Residuos", xlab = "Tiempo", ylab = "Residuos", col = "purple", pch = 16)
+abline(h = 0, col = "red", lwd = 2)
+hist(residuos, main = "Histograma de Residuos", xlab = "Residuos", col = "lightblue", breaks = 10)
+acf(residuos, main = "Autocorrelación de los Residuos")
+shapiro.test(residuos)
+```
+## 4. Calcula el CME y el EPAM de la predicción de la serie de tiempo.
+
+```{r}
+predicciones = predict(modelo_lineal)
+CME = mean((serie_desestacionalizada - predicciones)^2)
+CME
+```
+
+```{r}
+EPAM = mean(abs((serie_desestacionalizada - predicciones) / serie_desestacionalizada) * 100)
+EPAM
+```
+
+
+## 5. Explora un mejor modelo, por ejemplo un modelo cuadrático: $y = \beta_0 + \beta_1x + \beta_2x^2$. Para ello transforma la variable ventas (recuerda que la regresión no lineal es una regresión lineal con una tranformación).
+
+```{r}
+tiempo = 1:length(serie_desestacionalizada)
+tiempo_cuadrado = tiempo^2
+modelo_cuadratico = lm(serie_desestacionalizada ~ tiempo + tiempo_cuadrado)
+summary(modelo_cuadratico)
+predicciones_cuadraticas = predict(modelo_cuadratico)
+plot(tiempo, serie_desestacionalizada, main = "Ajuste del Modelo Cuadrático a la Serie Desestacionalizada", 
+     xlab = "Tiempo", ylab = "Ventas desestacionalizadas (miles)", col = "red", pch = 16)
+lines(tiempo, predicciones_cuadraticas, col = "blue", lwd = 2)
+legend("topleft", legend = c("Serie Desestacionalizada", "Modelo Cuadrático"), col = c("red", "blue"), pch = c(16, NA), lty = c(NA, 1))
+CME_cuadratico = mean((serie_desestacionalizada - predicciones_cuadraticas)^2)
+CME_cuadratico
+EPAM_cuadratico = mean(abs((serie_desestacionalizada - predicciones_cuadraticas) / serie_desestacionalizada) * 100)
+EPAM_cuadratico
+```
+
+## 6. Concluye sobre el mejor modelo
+
+```{r}
+CME_lineal = mean((serie_desestacionalizada - predicciones)^2)
+EPAM_lineal = mean(abs((serie_desestacionalizada - predicciones) / serie_desestacionalizada) * 100)
+
+CME_cuadratico = mean((serie_desestacionalizada - predicciones_cuadraticas)^2)
+EPAM_cuadratico <- mean(abs((serie_desestacionalizada - predicciones_cuadraticas) / serie_desestacionalizada) * 100)
+
+AIC_lineal = AIC(modelo_lineal)
+AIC_cuadratico = AIC(modelo_cuadratico)
+BIC_lineal = BIC(modelo_lineal)
+BIC_cuadratico = BIC(modelo_cuadratico)
+
+cat("Modelo Lineal:\n")
+cat("CME:", CME_lineal, "\nEPAM:", EPAM_lineal, "\nAIC:", AIC_lineal, "\nBIC:", BIC_lineal, "\n\n")
+
+cat("Modelo Cuadrático:\n")
+cat("CME:", CME_cuadratico, "\nEPAM:", EPAM_cuadratico, "\nAIC:", AIC_cuadratico, "\nBIC:", BIC_cuadratico, "\n")
+```
+Con base a los indicadores, diría que el modelo cuadrático es el mejor para nuestro conjunto de datos, o al menos sería la elección recomendada para realizar pronósticos en esta serie de tiempo. Ya que tiene un mejor ajuste (menor CME y EPAM, es mejor) y lo prefiero según los criterios AIC y BIC, lo que nos dice que captura mejor la relación en los datos sin un exceso de complejidad.
+
+
+## 7. Realiza el pronóstico para el siguiente año y grafícalo junto con los pronósticos previos y los datos originales.
+
+```{r}
+tiempo_futuro = (length(serie_desestacionalizada) + 1):(length(serie_desestacionalizada) + 4)
+tiempo_cuadrado_futuro = tiempo_futuro^2
+datos_futuros = data.frame(tiempo = tiempo_futuro, tiempo_cuadrado = tiempo_cuadrado_futuro)
+pronostico_futuro = predict(modelo_cuadratico, newdata = datos_futuros)
+indices_estacionales_futuros = tail(indices_estacionales, 4)
+pronostico_final = pronostico_futuro + indices_estacionales_futuros
+ventas_totales = c(serie_desestacionalizada + indices_estacionales, pronostico_final)
+tiempo_total = 1:length(ventas_totales)
+plot(tiempo_total, ventas_totales, type = "l", col = "black", ylim = range(ventas_totales),
+     main = "Pronóstico de Ventas para el Siguiente Año", xlab = "Tiempo (Trimestres)", ylab = "Ventas (miles)")
+lines(1:length(serie_desestacionalizada), serie_desestacionalizada + indices_estacionales, col = "blue", lwd = 2)
+lines(tiempo_futuro, pronostico_final, col = "red", lwd = 2, lty = 2)
+legend("topleft", legend = c("Datos Originales", "Ajuste Modelo Cuadrático", "Pronóstico Futuro"),
+       col = c("black", "blue", "red"), lty = c(1, 1, 2), lwd = c(1, 2, 2))
+```
+
+

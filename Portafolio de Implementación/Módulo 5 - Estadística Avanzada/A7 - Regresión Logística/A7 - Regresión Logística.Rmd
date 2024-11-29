@@ -1,0 +1,139 @@
+---
+title: "A7 - Regresión Logística"
+author: "Héctor Hibran Tapia Fernández - A01661114"
+date: "2024-11-05"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Set de Datos Weekly
+
+Trabaja con el set de datos Weekly, que forma parte de la librería ISLR. Este set de datos contiene información sobre el rendimiento porcentual semanal del índice bursátil S&P 500 entre los años 1990 y 2010. Se busca predecir el tendimiento (positivo o negativo) dependiendo del comportamiento previo de diversas variables de la bolsa bursátil S&P 500.
+
+Se cuenta con un set de datos con 9 variables (8 numéricas y 1 categórica que será nuestra variable respuesta: Direction). Las variables Lag  son los valores de mercado en semanas anteriores y el valor del día actual (Today). La variable volumen (Volume) se refiere al volumen de acciones. Realiza:
+
+## 1. El análisis de datos. Estadísticas descriptivas y coeficiente de correlación entre las variables.
+
+```{r}
+library(ISLR)
+library(tidyverse)
+
+data(Weekly)
+head(Weekly)
+glimpse(Weekly)
+summary(Weekly)
+```
+
+```{r}
+correlation_matrix = cor(Weekly[, -9])
+print(correlation_matrix)
+```
+
+```{r}
+attach(Weekly)
+plot(Volume, main="Volumen de transacciones semanal")
+```
+
+
+## 2. Formula un modelo logístico con todas las variables menos la variable "Today". Calcula los intervalos de confianza para las  $\beta_i$. Detecta variables que influyen y no influyen en el modelo. Interpreta el efecto de la variables en los odds (momios).
+
+```{r}
+modelo.log.m = glm(Direction ~ . -Today, data = Weekly, family = binomial)
+summary(modelo.log.m)
+```
+
+```{r}
+contrasts(Direction)
+confint(object = modelo.log.m, level = 0.95)
+```
+
+```{r}
+ggplot(data = Weekly, mapping = aes(x = Direction, y = Lag2)) +
+geom_boxplot(aes(color = Direction)) +
+geom_point(aes(color = Direction)) +
+theme_bw() +
+theme(legend.position = "null")
+```
+
+## 3. Divide la base de datos en un conjunto de entrenamiento (datos desde 1990 hasta 2008) y de prueba (2009 y 2010). Ajusta el modelo encontrado.
+
+```{r}
+datos.entrenamiento = Weekly$Year < 2009
+datos.test = Weekly[!datos.entrenamiento, ]
+nrow(Weekly[datos.entrenamiento, ]) + nrow(datos.test) == nrow(Weekly) # Para asegurarnos de que la división se realizó correctamente
+```
+## 4. Formula el modelo logístico sólo con las variables significativas en la base de entrenamiento.
+
+```{r}
+modelo.log.s = glm(Direction ~ Lag1 + Lag2, data = Weekly,family = binomial, subset = datos.entrenamiento)
+summary(modelo.log.s)
+```
+
+## 5. Representa gráficamente el modelo: 
+
+```{r}
+Weekly$Direction = ifelse(Weekly$Direction == "Down", yes = 0, no = 1)
+modelo.log.simple = glm(Direction ~ Lag2, data = Weekly, family = binomial)
+valores_lag2 = data.frame(Lag2 = seq(min(Weekly$Lag2), max(Weekly$Lag2), length.out = 100))
+predicciones = predict(modelo.log.simple, newdata = valores_lag2, type = "link", se.fit = TRUE)
+
+valores_lag2$probabilidad = plogis(predicciones$fit)
+valores_lag2$CI.superior = plogis(predicciones$fit + 1.96 * predicciones$se.fit)
+valores_lag2$CI.inferior = plogis(predicciones$fit - 1.96 * predicciones$se.fit)
+
+ggplot(Weekly, aes(x = Lag2, y = Direction)) +
+  geom_point(aes(color = as.factor(Direction)), shape = "I", size = 3) +
+  geom_line(data = valores_lag2, aes(y = probabilidad), color = "firebrick") +
+  geom_line(data = valores_lag2, aes(y = CI.superior), linetype = "dashed") +
+  geom_line(data = valores_lag2, aes(y = CI.inferior), linetype = "dashed") +
+  labs(title = "Modelo logístico Direction ~ Lag2", y = "P(Direction = Up | Lag2)", x = "Lag2") +
+  scale_color_manual(labels = c("Down", "Up"), values = c("blue", "red")) +
+  guides(color = guide_legend("Direction")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_bw()
+```
+
+
+## 6. Evalúa el modelo con las pruebas de verificación correspondientes (Prueba de chi cuadrada, matriz de confusión).
+
+```{r}
+anova(modelo.log.s, test = "Chisq")
+```
+
+```{r}
+predicciones_prob = predict(modelo.log.s, newdata = datos.test, type = "response")
+pred.modelo = ifelse(predicciones_prob > 0.5, 1, 0)
+Direction.0910 = datos.test$Direction
+matriz.confusion = table(pred.modelo, Direction.0910)
+matriz.confusion
+library(vcd)
+mosaic(matriz.confusion, shade = TRUE, colorize = TRUE,
+       gp = gpar(fill = matrix(c("green3", "red2", "red2", "green3"), 2, 2)))
+```
+
+
+## 7. Escribe (ecuación), grafica el modelo significativo  e interprétalo en el contexto del problema. Añade posibles  es buen modelo, en qué no lo es, cuánto cambia)
+
+```{r}
+valores_lag2 = data.frame(Lag2 = seq(min(Weekly$Lag2), max(Weekly$Lag2), length.out = 100),Lag1 = mean(Weekly$Lag1))  
+predicciones = predict(modelo.log.s, newdata = valores_lag2, type = "response")
+valores_lag2$probabilidad = predicciones
+
+ggplot(Weekly, aes(x = Lag2, y = Direction)) +
+  geom_point(aes(color = as.factor(Direction)), size = 3) +
+  geom_line(data = valores_lag2, aes(y = probabilidad), color = "firebrick") +
+  labs(title = "Probabilidad de Direction = Up en función de Lag2",
+       y = "P(Direction = Up)", x = "Lag2") +
+  scale_color_manual(labels = c("Down", "Up"), values = c("blue", "red")) +
+  guides(color = guide_legend("Direction")) +
+  theme_bw()
+```
+
+
+
+

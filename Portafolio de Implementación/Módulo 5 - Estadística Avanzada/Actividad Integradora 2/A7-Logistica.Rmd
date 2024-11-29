@@ -1,0 +1,518 @@
+---
+title: "Regresión Logística. El titanic"
+author: "Nombre del estudiante"
+date: "2024-11-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(printr)
+```
+
+# Bibliotecas
+
+```{r warning=FALSE}
+# Cargamos todas las librería en la lista "librerias"
+librerias = c('tidyverse','broom','ISLR','GGally','modelr','cowplot','rlang','modelr','tibble','Metrics','mice','visdat',"caret")
+
+for (lib in librerias){
+  library(lib,character.only=TRUE)}
+```
+
+# Leyendo los datos:
+
+```{r}
+M = read.csv("Titanic.csv")
+str(M)
+```
+
+Las variables son:
+
+* *Name:* Nombre del pasajero  
+* *PassengerId:* Ids del pasajero  
+* *Survived:* Si sobrevivió o no (No = 0, Sí = 1)  
+* *Ticket:* Número de ticket  
+* *Cabin:* Cabina en la que viajó  
+* *Pclass:* Clase en la que viajó (1 = 1era, 2 = 2da, 3 = 3ra)  
+* *Sex:* Masculino o Femenino (male/female)  
+* *Age:* Edad  
+* *SibSp:* Número de hermanos/conyuge a bordo  
+* *Parch:* Número de padres/hijos a bordo  
+* *Fare:* Tarifa que pagó  
+* *Embarked:* Puerto de embarcación (C = Cherbourg, Q = Queenstown, S = Southampton) 
+
+# Preparación de la base de datos
+
+## Ajustando las variables
+
+*Variables de interés*: Quita aquellas que de entrada no tengan que ver con la sobrevivencia del pasajero.
+Por ejemplo: Quitar variables 4, 9 y 11 (define si hay más)
+
+Variables categóricas que deben aparecer como factores: define qué variables aparecerán como factores 
+Por ejemplo: Survived, Pclass, Sex y Embarked (define si hay más)
+
+```{r}
+# Eliminar variables:
+M1 <- M[,c(-4,-9,-11)]
+
+#Transformar a factores:
+for(var in c('Survived','Pclass','Embarked','Sex')) 
+  M1[,var] <-as.factor(M1[,var])
+```
+
+## Análisis de datos faltantes
+
+Detectar si hay espacios vacíos en lugar de datos:
+
+```{r}
+V = matrix(NA,ncol=1,nrow=9)
+for(i in c(1:9)){
+  V[i,] <- sum(with(M1,M1[,i])=="")}
+V
+```
+
+Ninguna variable contiene espacios vacíos, pero las variables 5 (Age), 8 (Fare) y 9 (Embarked) tienen datos faltantes.
+
+Para contar los datos faltantes:
+
+```{r}
+N = apply(X=is.na(M1),MARGIN = 2,FUN = sum)
+P = round(100*N/length(M1[,2]),2)
+NP = data.frame(as.numeric(N),as.numeric(P))
+row.names(NP)= c("PassengerId", "Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked")
+names(NP)=c("Número","Porcentaje")
+t(NP)
+```
+
+En edad hay muchos datos faltantes, el 20% de los datos.
+
+Observemos el patrón de los datos faltantes:
+
+```{r}
+md.pattern(M1)
+```
+
+Todos los datos faltantes son de distintos pasajeros (observaciones), por lo tanto, si se eliminan los NA, se eliminarían 266 observaciones y nos quedaríamos con 1043 observaciones.
+
+```{r}
+vis_miss(M1,sort_miss = TRUE)
+```
+
+## Análisis sobre datos faltantes
+
+*Medidas con datos faltantes*
+
+```{r}
+summary(M1[,-1])
+```
+
+*Medidas sin datos faltantes*
+
+```{r}
+M2 = na.omit(M1)
+summary(M2[,-1])
+```
+
+¿Difieren las medidas con o sin datos faltantes? ¿cuáles son las variables que más se ven afectadas?
+
+
+**Sobrevivientes**
+
+```{r}
+t2c = 100*prop.table(table(M1[,2]))
+t2s = 100*prop.table(table(M2[,2]))
+t2p = c(t2s[1]/t2c[1],t2s[2]/t2c[2])
+t2 = data.frame(as.numeric(t2c),as.numeric(t2s),as.numeric(t2p))
+row.names(t2) = c("Murió","Sobrevivió")
+names(t2) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t2,2)
+```
+
+**Clase en que viajó**
+
+```{r}
+t3c = 100*prop.table(table(M1[,3]))
+t3s = 100*prop.table(table(M2[,3]))
+t3p = c(t3s[1]/t3c[1],t3s[2]/t3c[2],t3s[3]/t3c[3])
+t3 = data.frame(as.numeric(t3c),as.numeric(t3s),as.numeric(t3p))
+row.names(t3) = c("Primera","Segunda","Tercera")
+names(t3) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t3,2)
+```
+
+**Sexo**
+
+```{r}
+t4c = 100*prop.table(table(M1[,4]))
+t4s = 100*prop.table(table(M2[,4]))
+t4p = c(t4s[1]/t4c[1],t4s[2]/t4c[2])
+t4 = data.frame(as.numeric(t4c),as.numeric(t4s),as.numeric(t4p))
+row.names(t4) = c("Mujer","Hombre")
+names(t4) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t4,2)
+```
+
+*Puerto de embarcación*
+
+```{r}
+t9c = 100*prop.table(table(M1[,9]))
+t9s = 100*prop.table(table(M2[,9]))
+t9p = c(t9s[1]/t9c[1],t9s[2]/t9c[2],t9s[3]/t9c[3])
+t9 = data.frame(as.numeric(t9c),as.numeric(t9s),as.numeric(t9p))
+row.names(t9) = c("Cherbourg","Queenstown","Southampton")
+names(t9) = c("Con NA (%)","Sin NA (%)","Pérdida (prop)")
+round(t9,2)
+```
+
+En este ensayo quitarás los datos faltantes, pero deberás indicar cuáles son las variables más afectadas y por qué.
+
+# Análisis descriptivo
+
+Se recomienda analizar dividiendo la base de datos entre los que sobrevivieron y los que no. Usa:
+
+* Medidas
+* Gráficos
+
+# Partición. Entrenamiento y prueba
+
+Se toma el 70% de la muestra como entrenamiento y el 30% para prueba.
+
+```{r}
+M_indice <- createDataPartition(M2$Survived, p = .7, list = FALSE, times = 1)
+
+M_train <- M2[ M_indice,]  %>% as_tibble()
+M_valid <- M2[-M_indice,] %>% as_tibble()
+```
+
+## Proporciones de sobrevivientes en las tres bases de datos
+
+* Calcula la proporción de sobrevivientes en cada base de datos: Entrenamiento, prueba y completa. Haz una tabla comparativa
+* Haz un gráfico de barras que te ayude a comparar las tres bases de datos. Auxíliate del código:
+
+barplot(as.matrix(TablaComparativa), col=4:5, beside=TRUE, main="Porcentaje de sobrevivientes en los grupos", sub="dataset",ylim=c(0,80))
+legend("topright",legend = c("No","Sí"), title = "Sobrevientes",fill = 4:5)
+
+Define si la proporción de no sobrevientes se mantiene en las tres bases de datos.
+
+# Modelación (entrenamiento)
+
+Comienza con el modelo completo, incluyendo las variables categóricas (factores). Aplica el comando *step* para poder encontrar el mejor modelo.
+
+*step* utiliza el criterio de Aikaike (AIC) para definir el mejor modelo, sin embargo también proporciona la desviación residual del modelo completo. Un menor AIC y una menor *Deviance* indicarán un mejor modelo.
+
+```{r}
+A = glm(Survived ~Todas_las_variables, data = M_train, family = "binomial")
+```
+
+```{r}
+step(A, direction="both", trace=1 )
+```
+
+* Identifica el mejor modelo de acuerdo con el AIC
+* Selecciona la última variable que elminó el comando *step*. Prueba dos modelos, uno con esa variable y otro sin ella.
+
+
+## Modelo B
+
+* Prueba el modelo incluyendo la última variable que eliminó el comando *step*.
+* Indica cuáles son las variables que incluye.
+* Interpreta la significancia global (de todo el modelo) y la individual (de cada una de las variables)
+
+```{r}
+B = glm(formula = Survived ~ Variables, family = "binomial", data = M_train)
+summary(B)
+```
+
+## Modelo C
+
+* Prueba el modelo tal como te lo recomendó el comando *step*.
+* Indica cuáles son las variables que incluye.
+* Interpreta la significancia global (de todo el modelo) y la individual (de cada una de las variables)
+
+```{r}
+C = glm(formula = Survived ~ Variables, family = "binomial", data = M_train)
+summary(C)
+```
+
+## Análisis de los modelos B y C
+
+### Resumen de los indicadores importantes de los modelos B y C
+
+Compara el AIC, la *Null Deviance* y la *Residual Deviance* de los modelos B y C. Extrae los valores con los modelos con los comandos:
+
+* B$aic
+* B$deviance
+* B$null.deviance
+
+Elabora una tabla comparativa
+
+¿Cómo se comporta la *Null Deviance*? ¿por qué?
+¿Qué pasa con el AIC y la *Residual Deviance*?
+
+
+### Cálculo de la Desviación explicada ($pseudo r^2$)
+
+Calcula la desviación explicada para cada modelo. Recuerda que es igual a:
+
+pseudo $r^2$ = 1-Desviación residual/Desviación nula
+
+Compara los resultados obtenidos por ambos modelos
+
+### Prueba de razón de verosimilitud
+
+$H_0:$ El modelo con predictores explica mejor la variable respuesta: $log(\frac{p}{1-p})$ que el modelo nulo  
+$H_1:$ El modelo nulo explica mejor la variable respuesta: $log(\frac{p}{1-p})$ (la probabilidad es constante)
+
+Se calcula el estadístico de $\chi^2$ para la razón de verosimilutud a partir de las *Deviance* de los modelos.
+
+```{r}
+Diferencia = B$null.deviance-B$deviance
+gl = B$df.null - B$df.deviance
+
+pchisq(Diferencia,gl,lower.tail = FALSE)
+```
+
+Interpreta en el contexto del problema
+
+
+**Comparación entre los modelos B y C**
+
+Se pueden comparar los modelo B y C para ver si hay una diferencia significativa entre ambos con la misma razón de verosimilitud utilizando el comando ANOVA y la prueba LR.
+
+```{r}
+library(car)
+anova(B,C,test="LR")
+```
+
+## Modelo Seleccionado
+
+Define los coeficientes del modelo seleccionado. Por ejemplo, si el modelo seleccionado fue el B:
+
+```{r}
+b0 = round(B$coefficients[1],3)
+b1 = round(B$coefficients[2],3)
+b2 = round(B$coefficients[3],3)
+#...y así sucesivamente
+```
+
+### Gráfica el modelo
+
+Para percibir el efecto de cada variable, grafica cada variable contra los valores predichos por el modelo. Aunque en el modelo, la variable respuesta es:
+
+$$\hat{y}= log\left(\frac{p}{1-p}\right)$$
+
+con el subcomando: *fitted.values* del comando *glm* se obtienen las probabilidades estimadas para los valores datos. R despeja las probabilidades:
+
+$$\hat{p} = \left(\frac{e^{\hat{y}}}{1+e^{\hat{y}}}\right)$$
+
+Así que interpretar el efecto de cada variable, se grafica cada una de ellas contra los valores predichos para la probabilidad de sobrevivencia.
+
+Para hacer los gráficos se ejemplifica con:
+
+#### Clase en que viajó el pasajero
+
+```{r}
+p_pred = B$fitted.values
+M_pred = data.frame(M_train[,c(2,3,4,5,6)],p_pred)
+
+ggplot(M_pred, aes( x = Pclass)) +
+geom_point(aes(y=M_pred$p_pred), size=1.5,color="red") +
+  labs(x="Clase en que viajó", y="Probabilidad de sobrevivir",
+       title="Probabilidad de sobrevivir por clase",
+       subtitle="Pasajeros del Titanic",
+       col="")+
+  theme_bw(base_size = 12)
+```
+
+Grafica y concluye cómo cambia la probabilidad predicha con cada variable que resultó significativa
+
+## Predicciones
+
+Se hace el análisis con el modelo seleccionado, en el ejemplo suponemos que se seleccionó el modelo B.
+
+## Matriz de confusión
+
+```{r}
+library(vcd)
+predicciones <- ifelse(test = B$fitted.values > 0.5, yes = 1, no = 0)
+M_C <- table(C$model$Survived, predicciones, dnn = c("observaciones", "predicciones"))
+M_C
+mosaic(M_C, shade = T, colorize = T,
+       gp = gpar(fill = matrix(c("green3", "red2", "red2", "green3"), 2, 2)))
+```
+
+```{r}
+Ac = (M_C[1,1]+M_C[2,2])/sum(M_C)
+cat("La Exactitud (accuracy) del modelo es", Ac,"\n")
+
+Se = M_C[1,1]/sum(M_C[1,])
+cat("La Sensibilidad del modelo es", Se,"\n")
+
+Sp = M_C[2,2]/sum(M_C[2,])
+cat("La Especificidad del modelo es", Sp,"\n")
+
+P = M_C[1,1]/sum(M_C[,1])
+cat("La Precisión del modelo es", P,"\n")
+```
+
+Define si el modelo es bueno o no.
+
+## Curva ROC
+
+Para hacer la curva, es necesario crear las predicciones para el data set de entrenamiento. El comando *roc* cálculará la sensibilidad y la especificidad para los datos obtenidos.
+
+```{r}
+pred = predict(B, data = M_train, type = 'response')
+
+library(pROC)
+ROC <- roc(response=M_train$Survived, predictor=pred)
+ROC
+```
+
+```{r}
+ggroc(ROC, color = "blue", size = 2) + geom_abline(slope = 1, intercept = 1, linetype ='dashed') + labs(title = "Curva ROC") + theme_bw() 
+```
+
+Nota: Se grafica Especificidad, pero en realidad se está graficando 1 - Especificidad.
+
+Interpreta el gráfico y la salida que da el comando *roc*
+
+## Gráfico de violín
+
+Se crea la base de datos para el gráfico, se usan las predicciones ya elaboradas para el gráfico ROC y las clasificaciones originales (*train$M_Survived*).
+
+```{r}
+v_d = data.frame(Survived=M_train$Survived,pred=pred)
+
+ggplot(data=v_d, aes(x=Survived, y=pred, group=Survived, fill=factor(Survived))) + 
+  geom_violin() + geom_abline(aes(intercept=0.3,slope=0))+
+  theme_bw() +
+  guides(fill=FALSE) +
+  labs(title='Gráfico de Violín', subtitle='Modelo completo', y='Probabilidad predicha')
+```
+
+Interpreta
+
+# Validación
+
+## Elección de un umbral de clasificación optimo. 
+
+Elección del umbral de clasificación (punto de corte)
+
+Se trabaja con la base de datos de validación (*M_valid*) y se realiza el gráfico de la Exactitud, Sensibilidad, Especificidad y Precisión para distintos valores del umbral de clasificación. Se siguen los siguientes pasos:
+
+1. Predicción en los datos de validación con el modelo elegido (en el ejemplo, el B)
+2. Se definen los umbrales de clasificación: irán desde 0.05 hasta 0.95.
+3. Se definen las métricas de la matriz de confusión para cada umbral de clasificación
+4. Se prepara el conjunto de datos: se quitan los NA y se agrega la columna de umbrales de clasificaición
+5. Se le da un formato a la base de datos para que pueda ser graficada más fácilmente.
+
+**Generación de base de datos para graficar**
+
+```{r}
+pred_val = predict(B, newdata=M_valid, type='response')
+clase_real = M_valid$Survived
+
+datosV = data.frame(accuracy=NA, recall=NA, specificity = NA, precision=NA)
+
+for (i in 5:95){
+  clase_predicha = ifelse(pred_val>i/100,1,0)
+  
+##Creamos la matriz de confusión
+cm= table(clase_predicha,clase_real)
+
+## AccurAcy: Proporción de correctamente predichos
+datosV[i,1] = (cm[1,1]+cm[2,2])/(cm[1,1]+cm[1,2]+cm[2,1]+cm[2,2])
+## Recall: Tasa de positivos correctamente predichos
+datosV[i,2] = (cm[2,2])/(cm[1,2]+cm[2,2])
+## Specificity: Tasa de negativos correctamente predichos
+datosV[i,3] = cm[1,1]/(cm[1,1]+cm[2,1])
+## Precision: Tasa de bien clasificados entre los clasificados como positivos
+datosV[i,4] = cm[2,2]/(cm[2,1]+cm[2,2])
+}
+
+## Se limpia el conjunto de datos
+datosV = na.omit(datosV)
+datosV$umbral = seq(0.05,0.95,0.01)
+```
+
+**Formato de datos**
+
+* Se crea la variable *métrica* que será una variable categórica para las métricas (Exactitud, Sensibilidad, Especificidad y Precisión)
+* Los valores de las métricas se ponen en una sola columna.  
+* Se identifican las métricas para los distintos umbrales con la variable 'umbral'.  
+
+```{r}
+library(reshape2)
+datosV_m <- reshape2::melt(datosV,id.vars=c('umbral'))
+colnames(datosV_m)[2] <- c('Metrica')
+```
+
+**Gráfica**
+
+En la gráfica se define cuál es el mejor umbral de clasificación dependiendo de cuál métrica es más importante en el contexto del problema (Exactitud, Sensibilidad, Especificidad o Precisión). Si no hay una métrica de preferencia, se opta por escoger el máximo valor de que pueden tener estás métricas en conjunto. En cualquier caso da valores a u para mover el umbral de clasificación y observar como se comporta con respecto a las métricas.
+
+```{r}
+library(ggplot2)
+
+u = 0.20 #Se dio un valor arbitrario, tú modificalo de acuerdo al criterio que selecciones.
+
+ggplot(data=datosV_m, aes(x=umbral,y=value,color=Metrica)) + geom_line(size=1) + theme_bw() +
+  labs(title= 'Distintas métricas en función del umbral de clasificación',
+       subtitle= 'Modelo C',
+       color="", x = 'umbral de clasificación', y = 'Valor de la métrica') +
+  geom_vline(xintercept=u, linetype="dashed", color = "black")
+```
+
+Define cuál es el mejor umbral en donde se obtienen las mejores métricas Recall, Accuracy, Sensitivity y Specificity.
+
+
+## Matriz de confusión con el umbral de clasificación optimo
+
+De acuerdo al umbral seleccionado, calcula la matriz de confusión y las métricas obtenidas. Indica si mejora la predicción con respecto al umbral de u = 0.5, que es el que se maneja por default.
+
+```{r}
+prediccionesV = ifelse(pred_val > 0.3, yes = 1, no = 0)
+M_Cv <- table(prediccionesV, M_valid$Survived, dnn = c("observaciones", "predicciones"))
+M_Cv
+mosaic(M_Cv, shade = T, colorize = T,
+       gp = gpar(fill = matrix(c("green3", "red2", "red2", "green3"), 2, 2)))
+```
+
+
+```{r}
+AcV = (M_Cv[1,1]+M_Cv[2,2])/sum(M_Cv)
+cat("La Exactitud (accuracy) del modelo es", AcV,"\n")
+
+SeV = M_Cv[1,1]/sum(M_Cv[1,])
+cat("La Sensibilidad del modelo es", SeV,"\n")
+
+SpV = M_Cv[2,2]/sum(M_Cv[2,])
+cat("La Especificidad del modelo es", SpV,"\n")
+
+PV = M_Cv[1,1]/sum(M_Cv[,1])
+cat("La Precisión del modelo es", PV,"\n")
+```
+
+## Testeo 
+
+Calcula la matriz de confusión con los datos de prueba y el umbral de clasificación seleccionado.
+Indica que tan bueno es tu modelo y con él tu umbral de clasificación seleccionado.
+
+```{r}
+M_test=read.csv("Titanic_test.csv")
+```
+
+# Conclusiones
+
+Concluye definiendo cuáles fueron las principales características de las personas que sobrevivieron e indica cuáles son los coeficientes de cada variable en el modelo de predicción de sobrevivencia.
+
+Interpreta los coeficientes de predicción de cada variable. Indica cómo influyó en la sobrevivencia.
+
+Indica cuál es el mejor umbral de clasificación y por qué.
+
+
+
+
+

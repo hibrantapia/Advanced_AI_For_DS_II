@@ -1,0 +1,210 @@
+---
+title: "A6 - Regresión Poisson"
+author: "Héctor Hibran Tapia Fernández - A01661114"
+date: "2024-10-29"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Trabajaremos con el paquete dataset, que incluye la base de datos warpbreaks, que contiene datos del hilo (yarn) para identificar cuáles variables predictoras afectan la ruptura de urdimbre.
+
+```{r}
+data = warpbreaks
+head(data,10)
+```
+
+Este conjunto de datos indica cuántas roturas de urdimbre ocurrieron para diferentes tipos de telares por telar, por longitud fija de hilo:
+
+- breaks: número de rupturas
+- wool: tipo de lana (A o B)
+- tensión: el nivel de tensión (L, M, H)
+
+Sigue el siguiente procedimiento de análisis:
+
+## I. Análisis Descriptivo
+
+### - Histograma del número de rupturas
+
+```{r}
+hist(data$breaks, main = "Histograma del Número de Rupturas", xlab = "Número de Rupturas", ylab = "Frecuencia", col = "blue", border = "black")
+```
+
+### - Obtén la media y la varianza de la variable dependiente
+
+```{r}
+mean_breaks = mean(data$breaks)
+var_breaks = var(data$breaks)
+
+mean_breaks
+var_breaks
+```
+
+### - Interpreta en el contexto de una Regresión Poisson
+
+El número de rupturas es una variable que se ajusta a un modelo donde se asume que la varianza es aproximadamente igual a la media. Lo que implica que las rupturas de urdimbre pueden modelarse en función de variables predictoras, como el tipo de lana y la tensión, las cuales impactan la frecuencia de rupturas. Este modelo es adecuado si el número de rupturas sigue una distribución de Poisson.
+
+## II. Ajusta dos modelos de Regresión Poisson
+
+### - Ajusta el modelo de regresión Poisson sin interacción
+
+```{r}
+poisson_model_no_interaction = glm(breaks ~ wool + tension, data = data, family = poisson(link = "log"))
+summary(poisson_model_no_interaction)
+```
+
+### - Ajusta el modelo de regresión Poisson con interacción
+
+```{r}
+poisson_model_interaction = glm(breaks ~ wool * tension, data = data, family = poisson(link = "log"))
+summary(poisson_model_interaction)
+```
+
+## III. Selección del modelo
+
+### Para seleccionar el modelo se toma en cuenta:
+
+- Desviación residual: es la suma del cuadrado de los residuos estandarizados que se obtienen bajo el modelo. Con los grados de libertad se realiza una prueba de $\chi^2$ para significancia del modelo.
+
+```{r}
+residual_deviance_no_interaction = deviance(poisson_model_no_interaction)
+df_no_interaction = df.residual(poisson_model_no_interaction)
+p_value_no_interaction = pchisq(residual_deviance_no_interaction, df_no_interaction, lower.tail = FALSE)
+
+residual_deviance_no_interaction
+df_no_interaction
+p_value_no_interaction
+```
+
+```{r}
+residual_deviance_interaction = deviance(poisson_model_interaction)
+df_interaction = df.residual(poisson_model_interaction)
+p_value_interaction = pchisq(residual_deviance_interaction, df_interaction, lower.tail = FALSE)
+
+residual_deviance_interaction
+df_interaction
+p_value_interaction
+```
+
+- AIC: Criterio de Aikaike
+
+```{r}
+AIC_no_interaction = AIC(poisson_model_no_interaction)
+AIC_interaction = AIC(poisson_model_interaction)
+
+AIC_no_interaction
+AIC_interaction
+```
+
+En este caso cabe recalcar que un menor AIC indica un mejor modelo, por lo tanto **el mejor modelo es el modelo con interacción.**
+
+- Comparación entre los coeficientes y los errores estándar de de ambos modelos.
+
+```{r}
+coefficients_no_interaction = summary(poisson_model_no_interaction)$coefficients
+coefficients_interaction = summary(poisson_model_interaction)$coefficients
+
+coefficients_no_interaction
+coefficients_interaction
+```
+
+### Desviación residual (Prueba de $\chi^2$)
+
+- Si el modelo nulo explica a los datos, entonces la desviación nula será pequeña. Lo mismo ocurre con la Desviación residual . Puesto que es de suponer que el modelo contiene variables significativas, lo que importa que es la desviación residual del modelo sea suficientemente pequeño.
+
+```{r}
+poisson_model = glm(breaks ~ wool * tension, data = data, family = poisson(link = "log"))
+S = summary(poisson_model)
+gl = S$null.deviance - S$df.residual
+valor_frontera <- qchisq(0.05, gl, lower.tail = FALSE)
+cat("Valor frontera de la zona de rechazo =", valor_frontera, "\n")
+dr = S$deviance
+cat("Estadístico de prueba (Desviación residual) =", dr, "\n")
+vp = 1 - pchisq(dr, gl)
+cat("Valor p =", vp, "\n")
+```
+
+- La prueba de $\chi^2$ mide qué tan lejano está del cero la desviación residual del modelo. Entre más lejos esté del cero, el modelo será un buen modelo, entre más cerca, el modelo será un mal modelo que explicará poco la variabilidad de los datos. Su modelo supone:
+
+     - H0: Deviance = 0
+     - H1: Deviance > 0
+     - gl = gl_desviación residual (n-(p+1))
+     
+```{r}
+S = summary(poisson_model_no_interaction)
+gl = S$df.null - S$df.residual
+valor_frontera <- qchisq(0.05, gl)
+cat("Valor frontera de la zona de rechazo =", valor_frontera, "\n")
+dr = S$deviance
+cat("Estadístico de prueba =", dr, "\n")
+vp = 1 - pchisq(dr, gl)
+cat("Valor p =", vp, "\n")
+```
+
+## Interpreta los coeficientes de ambos modelos.
+
+```{r}
+library(ggplot2)
+ggplot(data, aes(x = tension, y = log(breaks), group = wool, color = wool)) +
+  stat_summary(fun = mean, geom = "point") +
+  stat_summary(fun = mean, geom = "line", lwd = 1.1) +
+  theme_bw() +
+  theme(panel.border = element_rect(fill = "transparent"))
+```
+
+Como se observa las líneas no son paralelas y exhiben comportamientos opuestos lo que nos indica de una interacción clara en el gráfico entre wool y tension, el modelo con interacción es el mejor, esto y el AIC, lo soportan.
+
+# IV. Evaluación de los supuestos
+
+Los supuestos principales que se deben cumplir son:
+
+### Independencia: haz la misma prueba de independencia que usaste en los modelos lineales.
+
+```{r}
+#install.packages("lmtest")
+library(lmtest)
+dwtest(poisson_model_no_interaction, alternative = "two.sided")
+```
+
+```{r}
+dwtest(poisson_model_interaction, alternative = "two.sided")
+```
+
+
+### Sobredispersión de los residuos. La sobredispersión de los residuos indicará que el modelo no cumple con el supuesto de que la media es igual a la varianza de los residuos. Para probarla se usa la prueba posgof, que es una prueba $\chi^2$ con gl = grados de libertad residual. La desviación estándar se compara con los grados de libertad de la desviación residual, no deben ser muy diferentes. Esto indicará una sobredispersión de los residuos:
+
+H0: No hay una sobredispersión del modelo
+H1: Hay una sobredispersión del modelo
+
+Usaremos el modelo con interacción
+
+```{r}
+#install.packages("epiDisplay")
+library(epiDisplay)
+poisgof(poisson_model_interaction)
+```
+
+```{r}
+poisson.model3 <- glm(breaks ~ wool * tension, data = data, family = quasipoisson(link = "log"))
+summary(poisson.model3)
+```
+
+
+```{r}
+bnm <- glm.nb(breaks ~ wool * tension, data = data, control = glm.control(maxit = 1000))
+summary(bnm)
+```
+
+
+# V. Define cuál es tu mejor modelo
+
+En base a lo anterior, el modelo **binomial negativa con interacción es el mejor modelo** para estos datos, debido a que:
+
+- Maneja adecuadamente la sobredispersión sin violar los supuestos de independencia de los residuos.
+- Tiene el AIC más bajo, tiene un mejor ajuste en comparación con el modelo cuasi-Poisson y el modelo de Poisson.
+
+

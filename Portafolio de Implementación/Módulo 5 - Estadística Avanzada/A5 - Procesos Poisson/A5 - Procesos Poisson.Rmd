@@ -1,0 +1,145 @@
+---
+title: "A5 - Procesos Poisson"
+author: "Héctor Hibran Tapia Fernández - A01661114"
+date: "2024-10-15"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Drive Thru
+
+El tiempo de llegada a una ventanilla de toma de órdenes desde un automóvil de un cierto comercio de hamburguesas sigue un proceso de Poisson con un promedio de 12 llegadas por hora.
+
+### - A) ¿Cuál será la probabilidad de que el tiempo de espera de tres personas sea a lo más de 20 minutos?
+
+```{r}
+# GAMMA
+alpha = 3 
+lambda_0 = 12 # Tasa de llegada (por minuto)
+x = 1/3
+
+probabilidad_a = pgamma(x, alpha, lambda_0)
+print(probabilidad_a)
+```
+
+
+### - B) ¿Cuál es la probabilidad de que el tiempo de espera de una persona esté entre 5 y 10 segundos?
+
+```{r}
+# EXPONENCIAL
+lambda = 12 / 3600  # Convertimos la tasa por segundo
+probabilidad_b = pexp(10, rate = lambda) - pexp(5, rate = lambda)
+print(probabilidad_b)
+```
+
+### - C) ¿Cuál será la probabilidad de que en 15 minutos lleguen a lo más tres personas?
+
+```{r}
+# POISSON
+lambda = 12 * 0.25  # 12 llegadas/hora * 0,25 horas = 3 llegadas
+probabilidad_c = ppois(3, lambda = lambda) # Probabilidad de que N <= 3
+print(probabilidad_c)
+```
+
+### - D) ¿Cuál es la probabilidad de que el tiempo de espera de tres personas esté entre 5 y 10 segundos?
+
+```{r}
+# GAMMA
+lambda = 12 / 3600 # 12 llegadas/hora convertidas a segundos
+alpha = 3  # Esperando 3 llegadas
+probabilidad_d = pgamma(10, shape = alpha, rate = lambda) - pgamma(5, shape = alpha, rate = lambda) # Calculamos la probabilidad de que T esté entre 5 y 10 segundos.
+print(probabilidad_d)
+```
+
+### - E) Determine la media y varianza del tiempo de espera de tres personas.
+
+```{r}
+# GAMMA
+lambda = 12
+alpha = 3
+mean_time = alpha / lambda 
+variance_time = alpha / (lambda^2) 
+std_dev_time = sqrt(variance_time)
+
+cat("Media del tiempo de espera de tres personas:", mean_time, "horas\n")
+cat("Desviación estándar del tiempo de espera de tres personas:", std_dev_time, "horas\n")
+```
+
+### - F) ¿Cuál será la probabilidad de que el tiempo de espera de tres personas exceda una desviación estándar arriba de la media?
+
+```{r}
+# GAMMA
+
+alpha = 3  # número de personas
+lambda_0 = 0.2  # tasa de llegada 
+
+media = alpha / lambda_0
+desviacion_estandar = sqrt(alpha) / lambda_0
+
+limite = media + desviacion_estandar
+
+probabilidad_f = 1 - pgamma(limite, shape = alpha, rate = lambda_0)
+print(probabilidad_f)
+```
+
+# Entre partículas
+
+Una masa radioactiva emite partículas de acuerdo con un proceso de Poisson con una razón promedio de 15 partículas por minuto. En algún punto inicia el reloj.
+
+### - A) ¿Cuál es la probabilidad de que en los siguientes 3 minutos la masa radioactiva emita 30 partículas?
+
+```{r}
+# POISSON
+lambda_per_minute = 15
+time_minutes = 3
+lambda = lambda_per_minute * time_minutes
+k = 30
+probabilidad_a = dpois(k, lambda)
+print(probabilidad_a)
+```
+
+### - B) ¿Cuál es la probabilidad de que transcurran cinco segundos a lo más antes de la siguiente emisión?
+
+```{r}
+# POISSON
+lambda_per_minute = 15
+lambda_per_second = lambda_per_minute / 60
+t = 5
+probabilidad_b = pexp(t, rate = lambda_per_second)
+print(probabilidad_b)
+```
+
+### - C) ¿Cuánto es la mediana del tiempo de espera de la siguiente emisión?
+
+```{r}
+lambda_per_minute = 15
+t_median_minutes = log(2) / lambda_per_minute
+t_median_seconds = t_median_minutes * 60
+print(t_median_minutes)
+```
+
+### - D) ¿Cuál es la probabilidad de que transcurran a lo más cinco segundos antes de la segunda emisión?
+
+```{r}
+lambda_per_minute = 15
+lambda_per_second = lambda_per_minute / 60
+k = 2
+t = 5
+probabilidad_d = pgamma(t, shape = k, rate = lambda_per_second)
+print(probabilidad_d)
+```
+
+### - E) ¿En que rango se encuentra el 50% del tiempo central que transcurre antes de la segunda emisión?
+
+```{r}
+lambda_per_minute = 15
+k = 2
+t1 = qgamma(0.25, shape = k, rate = lambda_per_minute)
+t2 = qgamma(0.75, shape = k, rate = lambda_per_minute)
+print(paste("El 50% central del tiempo transcurre entre", round(t1, 4), "y", round(t2, 4), "minutos"))
+```
