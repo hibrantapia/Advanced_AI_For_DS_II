@@ -7,8 +7,13 @@ Feel free to explore, contribute, or use these materials for educational and res
 ## Directory Structure
 
 - **`Portafolio de Análisis/`**
-  - **`Análisis y Reporte sobre el Desempeño de la SGDR/`**
-    - `Linear_Regression_SGDR.html`
+  - **`Módulo 1 - Big Data/`**
+    - **`1 - Instalación de Spark en AWS/`**
+    - **`2 - Terminal y Putty/`**
+    - **`3 - Filezilla o Cyberduck/`**
+    - **`4 - Base de Datos/`**
+    - **`5 - Diagrama Relacional/`**
+    - **`6 - Instalación MySQL/`**
 
 
 - **`Portafolio de Implementación/`**
