@@ -28,6 +28,15 @@ Feel free to explore, contribute, or use these materials for educational and res
   
 
 - **`Portafolio de Implementación/`**
+  - **`Módulo 3 - Procesamiento de Lenguaje Natural/`**
+    - **`A1 - Clasificación de Spam/`**
+    - **`A2 - Pre-procesamiento de Texto y N-gramas/`**
+    - **`A3 - Clasificación de Sentimientos/`**
+    - **`A4 - Chatbot/`**
+    - **`A5 - Word Embeddings Pre-entrenados/`**
+    - **`A6 - Clasificación de Texto con Word Embeddins Pre-entrenados/`**
+    - **`A7 - BERT/`**
+  
   - **`Módulo 5 - Estadística Avanzada/`**
     - **`A5 - Procesos Poisson/`**
     - **`A6 - Regresión Poisson/`**
