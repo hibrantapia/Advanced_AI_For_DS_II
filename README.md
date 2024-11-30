@@ -28,6 +28,14 @@ Feel free to explore, contribute, or use these materials for educational and res
   
 
 - **`Portafolio de Implementación/`**
+  - **`Módulo 2 - Aprendizaje Profundo/`**
+    - **`Actividad 1 - NBA Goat/`**
+    - **`Actividad 2 - Student Performance/`**
+    - **`Actividad 3 - Student Performance Profiles/`**
+    - **`Actividad 4 - Timeseries Forecasting/`**
+    - **`Actividad 7 - Feature Selection/`**
+    - **`Actividad 8 - Dense Dropout/`**
+  
   - **`Módulo 3 - Procesamiento de Lenguaje Natural/`**
     - **`A1 - Clasificación de Spam/`**
     - **`A2 - Pre-procesamiento de Texto y N-gramas/`**
