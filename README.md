@@ -17,13 +17,13 @@ Feel free to explore, contribute, or use these materials for educational and res
       
   - **`Módulo 4 - Cómputo en la Nube/`**
     - Diseño de Arquitectura en la Nube.pdf
-    - POR LLENAR
+    - Reporte de Seguridad en la Nube.pdf
       
   - **`Módulo 5 - Estadística Avanzada/`**
-    - **`POR LLENAR/`**
+    - **`A1 - Regresión No-Lineal/`**
     - **`A2 - Regresión Múltiple/`**
     - **`A3 - Regresión Múltiple - Detección Datos Atípicos/`**
-    - **`POR LLENAR/`**
+    - **`A4 - Componentes Principales/`**
     - **`Actividad Integradora 1/`**
    
   - **`Reto/`**
