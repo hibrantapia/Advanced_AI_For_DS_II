@@ -25,6 +25,11 @@ Feel free to explore, contribute, or use these materials for educational and res
     - **`A3 - Regresión Múltiple - Detección Datos Atípicos/`**
     - **`POR LLENAR/`**
     - **`Actividad Integradora 1/`**
+   
+  - **`Reto/`**
+    - Ensayo - Debemos preocuparnos por la IA.pdf
+    - Poster_Reto_Eq5.pdf
+    - Reto - Investigación del Socio Formador.pdf
   
 
 - **`Portafolio de Implementación/`**
