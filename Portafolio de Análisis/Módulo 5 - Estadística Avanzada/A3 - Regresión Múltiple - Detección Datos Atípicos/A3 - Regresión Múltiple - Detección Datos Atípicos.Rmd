@@ -1,0 +1,305 @@
+---
+title: "A2 - Regresión Múltiple"
+author: "Héctor Hibran Tapia Fernández - A01661114"
+date: "2024-09-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Haz un análisis descriptivo de los datos: medidas principales y gráficos
+
+```{r}
+df = read.csv("./AlCorte.csv")
+summary(df)
+```
+
+```{r}
+hist(df$Fuerza, main = "Histograma de Fuerza", xlab = "Fuerza", col = "lightblue")
+hist(df$Potencia, main = "Histograma de Potencia", xlab = "Potencia", col = "lightgreen")
+hist(df$Temperatura, main = "Histograma de Temperatura", xlab = "Temperatura", col = "lightcoral")
+hist(df$Tiempo, main = "Histograma de Tiempo", xlab = "Tiempo", col = "lightyellow")
+hist(df$Resistencia, main = "Histograma de Resistencia", xlab = "Resistencia", col = "lightpink")
+```
+
+```{r}
+boxplot(df$Fuerza, main = "Boxplot de Fuerza", col = "lightblue", ylab = "Fuerza")
+boxplot(df$Potencia, main = "Boxplot de Potencia", col = "lightgreen", ylab = "Potencia")
+boxplot(df$Temperatura, main = "Boxplot de Temperatura", col = "lightcoral", ylab = "Temperatura")
+boxplot(df$Tiempo, main = "Boxplot de Tiempo", col = "lightyellow", ylab = "Tiempo")
+boxplot(df$Resistencia, main = "Boxplot de Resistencia", col = "lightpink", ylab = "Resistencia")
+```
+```{r}
+pairs(df, main = "Scatter plots entre todas las variables", col = "blue", pch = 19)
+```
+
+## 2. Encuentra el mejor modelo de regresión que explique la variable Resistencia. 
+
+```{r}
+modelo_completo = lm(Resistencia ~ ., data = df)
+modelo_nulo = lm(Resistencia ~ 1, data = df)
+
+# Modelo Mixto
+modelo_mixto = step(modelo_completo, direction = "both", trace = 1)
+```
+
+```{r}
+# Modelo Forward
+modelo_forward = step(modelo_nulo, scope = list(lower = modelo_nulo, upper = modelo_completo), direction = "forward")
+```
+
+```{r}
+# Modelo Backward
+modelo_backward = step(modelo_completo, direction = "backward")
+```
+
+## Analiza el modelo basándote en:
+
+### - Significancia del modelo:
+### 1. Economía de las variables
+    
+```{r}
+summary(modelo_mixto)
+cat("------------------------------------------------------------------")
+summary(modelo_forward)
+cat("------------------------------------------------------------------")
+summary(modelo_backward)
+```
+
+
+### 2. Significación global (Prueba para el modelo)
+    
+```{r}
+summary(modelo_mixto)$fstatistic
+print("--------------------------")
+summary(modelo_forward)$fstatistic
+print("--------------------------")
+summary(modelo_backward)$fstatistic
+```
+
+### 3. Significación individual (Prueba para cada 𝛽𝑖)
+
+```{r}
+summary(modelo_mixto)$coefficients
+confint(modelo_mixto)
+print("----------------------------------------------------------")
+summary(modelo_forward)$coefficients
+confint(modelo_forward)
+print("----------------------------------------------------------")
+summary(modelo_backward)$coefficients
+confint(modelo_backward)
+```
+
+### 4. Variación explicada por el modelo
+
+```{r}
+summary(modelo_mixto)$r.squared
+summary(modelo_mixto)$adj.r.squared
+print("----------")
+summary(modelo_forward)$r.squared
+summary(modelo_forward)$adj.r.squared
+print("----------")
+summary(modelo_backward)$r.squared
+summary(modelo_backward)$adj.r.squared
+```
+    
+## 3. Analiza la validez del modelo encontrado:
+
+### - Análisis de residuos (homocedasticidad, independencia, etc)
+
+```{r}
+library(nortest)
+
+ad.test(modelo_mixto$residuals)
+qqnorm(modelo_mixto$residuals, main = "Gráfico Q-Q de los Residuos")
+qqline(modelo_mixto$residuals, col = "red")
+
+hist(modelo_mixto$residuals, freq = FALSE, ylim = c(0, 0.15), main = "Histograma de los Residuos", xlab = "Residuos")
+lines(density(modelo_mixto$residuals), col = "red")
+curve(dnorm(x, mean = mean(modelo_mixto$residuals), sd = sd(modelo_mixto$residuals)), from = -6, to = 6, add = TRUE, col = "blue", lwd = 2)
+```
+
+
+```{r}
+plot(predict(modelo_forward), residuals(modelo_forward), main = "Residuos vs Valores Ajustados", xlab = "Valores Ajustados", ylab = "Residuos", pch = 19, col = "blue")
+abline(h = 0, col = "red")
+```
+
+```{r}
+library(lmtest) 
+# Homocedasticidad
+bptest(modelo_mixto)  # Prueba de Breusch-Pagan
+```
+```{r}
+# Independencia
+dwtest(modelo_mixto)  # Prueba de Durbin-Watson
+bgtest(modelo_mixto) # Prueba de Breusch-Godfrey
+```
+```{r}
+# Linealidad
+resettest(modelo_mixto) # Prueba de RESET de Ramsey
+```
+
+### - No multicolinealidad de X_i
+
+```{r}
+library(car)
+vif(modelo_mixto)  
+cor(df[, c("Potencia", "Temperatura")])
+```
+
+## 4. Emite conclusiones sobre el modelo final encontrado e interpreta en el contexto del problema el efecto de las variables predictoras en la variable respuesta.
+
+En general se realizó un análisis para validar cual de los tres modelos (mixto, forward, backward) es mejor.
+Y cuál de estos predice la variable dependiente "Resistencia", como se mostró después de aplicar cada modelo, los tres llegaron a la misma conclusión que el mejor modelo es "Resistencia ~ Potencia + Temperatura", por supuesto cada modelo tuvo su forma especifica de como es que llegaron a esta conclusión. Esto nos indica que estas dos variables predictoras (Potencia ,Temperatura) son las mejores para ayudar a predecir Resistencia, ya que estas resultaron ser las más significativas para explicar la variabilidad de Resistencia.
+
+Ahora al evaluar la **homocedasticidad** usando la prueba de Breusch-Pagan, tenemos las siguientes hipótesis:
+
+- Hipótesis nula (H₀): Los residuos del modelo son homocedásticos (la varianza de los residuos es constante a lo largo de todas las observaciones).
+- Hipótesis alternativa (H₁): Los residuos presentan heterocedasticidad (la varianza de los residuos no es constante).
+
+Dado que en nuestro caso el p-valor = 0.135 es mayor que 0.05, deducimos que no hay suficiente evidencia para rechazar la hipótesis nula de homocedasticidad. Lo que significa que no se detecta heterocedasticidad en los residuos del modelo, por lo que se puede asumir que la varianza de los errores es constante.
+
+El modelo cumple con el supuesto de homocedasticidad, lo que es una bueno. La prueba no encontró ninguna evidencia de que la varianza de los residuos cambie a lo largo de los valores predichos, lo cual valida aún más el modelo.
+
+Ahora para la **independecia** se realizaron las siguientes pruebas:
+
+- Prueba de Durbin-Watson
+- Prueba de Breusch-Godfrey
+
+Estás pruebas nos ayudan a detectar la autocorrelación de los residuos en un modelo de regresión, lo que buscamos es que no haya autocorrelación en nuestros residuos.
+
+Y eso mismo nos dicen ambas pruebas, en la prueba de Durbin-Watson, el estadístico DW = 2.35 y el p-valor = 0.8267 nos dicen que los residuos no tienen autocorrelación significativa, ya que un valor cercano a 2 indica independencia de los errores.(Puede variar entre 0 y 4, 2 seria el neutro en este caso) Igual, de manera similar, la prueba de Breusch-Godfrey también mostró un p-valor = 0.2863, lo que confirma que no hay autocorrelación de orden superior en los residuos. Con ambos resultados, podemos validar el supuesto de independencia de los errores en el modelo.
+
+Ahora explicando la **linealidad**:
+
+Se realizó la prueba de RESET de Ramsey, lo que nos muestra un p-valor = 0.4647, esto nos dice que no hay suficiente evidencia para rechazar la hipótesis nula de que el modelo está correctamente especificado. Esto significa que la relación entre las variables predictoras y la variable dependiente es lineal, y no es necesario agregar términos no lineales (como cuadráticos o cúbicos) para mejorar el ajuste del modelo.
+
+**VIF y Matriz de correlación**
+
+El VIF mide cuánto la varianza de un coeficiente de regresión está "inflada" debido a la colinealidad con otras variables predictoras. Un VIF = 1 significa que no hay correlación entre una variable y las demás.
+
+En nuestro casol os resultados que nos da para VIF muestran que tanto Potencia como Temperatura tienen un VIF = 1. Esto es lo mejor que se puede obtener, ya que significa que no existe ninguna colinealidad entre las variables.
+
+Con esto, podemos tener una pequeña idea de como se vería la matriz de correlación.
+
+Correlación 0 entre Potencia y Temperatura significa que no hay relación lineal entre estas variables. Esto confirma que no hay problemas de multicolinealidad.
+
+**Y con esto hemos concluido que el mejor modelo es "Resistencia ~ Potencia + Temperatura", donde se observa que solo necesitamos de dos variables, lo cual hace el modelo simple, pero efectivo.**
+
+
+# Análisis de Datos Atípicos
+
+A continuación realizaremos un análisis detallado de los datos atípicos e incluyentes del mejor modelo encontrado.
+
+```{r}
+modelo_mixto
+```
+
+```{r}
+hatvalues(modelo_mixto)
+```
+
+```{r}
+rstudent(modelo_mixto)
+```
+
+```{r}
+cooks.distance(modelo_mixto)
+```
+```{r}
+ I = influence.measures(modelo_mixto)
+summary (I)
+```
+
+```{r}
+dfbetas(modelo_mixto)
+```
+
+## Estandarización Extrema de los Residuos
+
+```{r}
+df$residuos_estandarizados = rstudent(modelo_mixto)
+df$cooksd = cooks.distance(modelo_mixto)
+
+df$outlier = ifelse(abs(df$residuos_estandarizados) > 3, TRUE, FALSE)
+df$influyente = ifelse(df$cooksd > 4 / nrow(df), TRUE, FALSE)
+
+df_atipicos_influyentes <- df[df$outlier | df$influyente, ]
+
+library(ggplot2)
+
+ggplot(data = df, aes(x = predict(modelo_mixto), y = abs(residuos_estandarizados))) +
+  geom_point(aes(color = outlier, shape = influyente), size = 3) +
+  geom_hline(yintercept = 3, linetype = "dashed", color = "blue") +  # Umbral de residuos atípicos
+  geom_hline(yintercept = -3, linetype = "dashed", color = "blue") +
+  scale_color_manual(values = c('black', 'red')) +
+  scale_shape_manual(values = c(16, 17)) +  
+  labs(title = "Distribución de residuos estandarizados y puntos influyentes",
+       x = "Predicción del modelo",
+       y = "Residuos estandarizados absolutos",
+       color = "Atípico",
+       shape = "Influyente") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(data = df_atipicos_influyentes, 
+            aes(x = predict(modelo_mixto)[df$outlier | df$influyente], 
+                y = abs(residuos_estandarizados)[df$outlier | df$influyente],
+                label = rownames(df_atipicos_influyentes)), 
+            vjust = -1, color = "darkred")
+```
+
+
+## Distancia de Leverange (diagonal de la matriz sombrero)
+
+```{r}
+leverage = hatvalues(modelo_mixto)
+plot(leverage, type="h", main="Valores de Apalancamiento", ylab="Apalancamiento")
+abline(h = 2*mean(leverage), col="red") 
+```
+
+```{r}
+high_leverage_points = which(leverage > 2*mean(leverage))
+high_leverage_points
+```
+
+
+## Distancia de Cook
+
+```{r}
+cooksdistance <- cooks.distance(modelo_mixto)
+
+plot(cooksdistance, type="h", main="Distancia de Cook", ylab="Distancia de Cook")
+abline(h = 1, col="red") 
+```
+
+## DfBetas
+
+```{r}
+dfbetas_values = dfbetas(modelo_mixto)
+
+plot(dfbetas_values[, 2], type="h", main='DfBetas',
+ylab="DfBetas")
+abline(h = c(-1, 1), col="red")
+```
+
+
+## Datos Influyentes
+
+```{r}
+influencia = influence.measures(modelo_mixto)
+summary(influencia)
+```
+
+```{r}
+library(car)
+influencePlot(modelo_mixto)
+```
+
+```{r}
+par(mfrow=c(2, 2))
+plot(modelo_mixto, col = 'blue', pch = 19)
+```
+
